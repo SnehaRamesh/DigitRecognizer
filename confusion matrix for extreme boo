@@ -1,0 +1,51 @@
+# Extreme Gradient Boosting 
+
+install.packages("readr")
+library(readr)
+install.packages("xgboost")
+library(xgboost)
+
+# Read the data
+test_set=read.csv("C:\\Users\\Sneha\\Desktop\\test.csv")
+test_data=test_set
+training_set <- read.csv("C:\\Users\\Sneha\\Downloads\\train.csv")
+
+ClassName<-training_set$label
+
+#Convert Training data into a matrix
+training_set<-as.matrix(training_set[,-1])
+training_set<- matrix(as.numeric(training_set),nrow(training_set),ncol(training_set))
+
+#Convert Testing data into a matrix
+test_set<-as.matrix(test_set)
+test_set<- matrix(as.numeric(test_set),nrow(test_set),ncol(test_set))
+
+#Fit a model
+model<-xgboost(data = training_set, label = ClassName, max.depth = 20, eta = .3, nround =10,
+             nthread = 2, objective = "multi:softmax",num_class=10, verbose = 2)
+
+model<-xgboost(data = training_set, label = ClassName, eta = .2 ,max.depth = 15,  nthread = 3, nround =10,
+               objective = "multi:softmax",num_class=10, verbose = 2)
+
+
+#Preparing predictions
+predictions<-data.frame(Imageid=1:nrow(test_set),Label=NA)
+predictions[,2]<-predict(model,test_set)
+
+head(predictions)
+
+# Write predictions .csv file
+write.csv(predictions,'result_xgb1.csv',row.names=F)
+install.packages("caret")
+library(caret)
+
+#sum(predictions[,2] == label) / nrow(predictions)
+cmat=confusionMatrix(data=testpred, test_data$Label)
+precision <- cmat$byClass['Pos Pred Value']
+
+
+head(predictions)
+testpred=predictions$Label
+head(testpred)
+precision <- posPredValue(predictions, y)
+
