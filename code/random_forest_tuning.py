@@ -1,58 +1,55 @@
 import matplotlib.pyplot as plt
-from sklearn import svm
-from sys import argv
 from sklearn.preprocessing import label_binarize
-from sklearn.ensemble import BaggingClassifier
-from sklearn.multiclass import OneVsRestClassifier
-from sklearn.metrics import confusion_matrix, accuracy_score, recall_score, precision_score, roc_curve , auc
-from sklearn.model_selection import KFold
-from scipy import interp
+from sklearn.ensemble import RandomForestClassifier
 import numpy
+from sklearn.model_selection import KFold
+from sklearn.metrics import confusion_matrix, accuracy_score, recall_score, precision_score, roc_curve , auc
+from sys import argv
+from scipy import interp
 from itertools import cycle
 
 cpu_count = 1
 if(len(argv) == 2):
 	script, cpu_count = argv
-try:
-	cpu_count = int(cpu_count)
-except Exception, e:
-	print "Cpu count should be a number"
-	exit()
-dataset = numpy.genfromtxt(open('../Data/train.csv','r'), delimiter=',', dtype='f8')[1:]
+	try:
+		cpu_count = int(cpu_count)
+	except Exception, e:
+		print "Cpu count should be a number"
+		exit()
+dataset = numpy.genfromtxt(open('../Data/train.csv','r'), delimiter=',', dtype='f8')[1:]    
 target = [x[0] for x in dataset]
 target = numpy.array(target)
 train = [x[1:] for x in dataset]
 train = numpy.array(train)
 output_classes = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-#test = numpy.genfromtxt(open('../Data/test.csv','r'), delimiter=',', dtype='f8')[1:]
+#test = numpy.genfromtxt(open('data/test.csv','r'), delimiter=',', dtype='f8')[1:]
 number_of_folds = 10
 k_fold = KFold(n_splits = number_of_folds)
 experiments = [
-	[50, 0.1, 1e-10],
-	[60, 0.01, 1e-10],
-	[50, 1, 1e-8],
-	[40, 0.01, 1e-9],
-	[40, 0.1, 1e-8],
+	[100, 28],
+	[120, 27],
+	[70, 26],
+	[150, 28],
+	[140, 24],
 ]
 experiment_number = 1
 for experiment in experiments:
 	print "Experiment: %d " % experiment_number
-	cm_file = open("../Confusion Matrix/SVM/Exp_%d.txt" % experiment_number, 'w')
+	cm_file = open("../Confusion Matrix/Random_Forest/Exp_%d.txt" % experiment_number, 'w')
 	k = 1
 	mean_accuracy = 0
 	mean_precision = 0
 	mean_recall = 0
 	mean_auc = 0
-	number_of_svms = experiment[0]
 	for train_index, test_index in k_fold.split(train):
 		fold_train = train[train_index]
 		fold_test = train[test_index]
 		fold_target_train = target[train_index]
 		fold_target_test = target[test_index]
-		svm_bagging_classifier = OneVsRestClassifier(BaggingClassifier(svm.SVC(C = experiment[1], gamma = experiment[2], probability = True), max_samples = 1.0 / number_of_svms, n_estimators = number_of_svms, n_jobs = cpu_count))
-		svm_bagging_classifier.fit(fold_train, fold_target_train)
-		predictions = svm_bagging_classifier.predict(fold_test)
-		scores = svm_bagging_classifier.predict_proba(fold_test)
+		rf = RandomForestClassifier(n_estimators = experiment[0], max_features = experiment[1], n_jobs = cpu_count)
+		rf.fit(fold_train, fold_target_train)
+		predictions = rf.predict(fold_test)
+		scores = rf.predict_proba(fold_test)
 		binarized_outputs = label_binarize(fold_target_test, classes = output_classes)
 		fpr = dict()
 		tpr = dict()
