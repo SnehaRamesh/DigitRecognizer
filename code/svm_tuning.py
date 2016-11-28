@@ -1,4 +1,4 @@
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as graph_plot
 from sklearn import svm
 from sys import argv
 from sklearn.preprocessing import label_binarize
@@ -24,9 +24,10 @@ target = numpy.array(target)
 train = [x[1:] for x in dataset]
 train = numpy.array(train)
 output_classes = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-#test = numpy.genfromtxt(open('../Data/test.csv','r'), delimiter=',', dtype='f8')[1:]
+#Create Folds
 number_of_folds = 10
 k_fold = KFold(n_splits = number_of_folds)
+#The parameters for each experiment
 experiments = [
 	[50, 0.1, 1e-10],
 	[60, 0.01, 1e-10],
@@ -37,7 +38,9 @@ experiments = [
 experiment_number = 1
 for experiment in experiments:
 	print "Experiment: %d " % experiment_number
+	#Create a file to save the confusion matrix
 	cm_file = open("../Confusion Matrix/SVM/Exp_%d.txt" % experiment_number, 'w')
+	#Initialize the performance values
 	k = 1
 	mean_accuracy = 0
 	mean_precision = 0
@@ -45,63 +48,74 @@ for experiment in experiments:
 	mean_auc = 0
 	number_of_svms = experiment[0]
 	for train_index, test_index in k_fold.split(train):
+		#Get the fold train, train target, test, test target
 		fold_train = train[train_index]
 		fold_test = train[test_index]
 		fold_target_train = target[train_index]
 		fold_target_test = target[test_index]
+		#Create the classifier model
 		svm_bagging_classifier = OneVsRestClassifier(BaggingClassifier(svm.SVC(C = experiment[1], gamma = experiment[2], probability = True), max_samples = 1.0 / number_of_svms, n_estimators = number_of_svms, n_jobs = cpu_count))
+		#Fit the classifier model on the train data
 		svm_bagging_classifier.fit(fold_train, fold_target_train)
+		#Predict the results for test data
 		predictions = svm_bagging_classifier.predict(fold_test)
+		#Get the probability estimates used for AUROC
 		scores = svm_bagging_classifier.predict_proba(fold_test)
+		#Binarize the output target as since it is a multi classification model and we get probability estimates for each class available
 		binarized_outputs = label_binarize(fold_target_test, classes = output_classes)
-		fpr = dict()
-		tpr = dict()
+		#Calculate the false positive rate and the true positive rate for each of the labels
+		false_positive_rate = dict()
+		true_positive_rate = dict()
 		roc_auc = dict()
 		for i in range(len(output_classes)):
-			fpr[i], tpr[i], _ = roc_curve(binarized_outputs[:, i], scores[:, i])
-			roc_auc[i] = auc(fpr[i], tpr[i])
+			false_positive_rate[i], true_positive_rate[i], _ = roc_curve(binarized_outputs[:, i], scores[:, i])
+			roc_auc[i] = auc(false_positive_rate[i], true_positive_rate[i])
 
-		fpr["micro"], tpr["micro"], _ = roc_curve(binarized_outputs.ravel(), scores.ravel())
-		roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
-		all_fpr = numpy.unique(numpy.concatenate([fpr[i] for i in range(len(output_classes))]))
+		#Calculate the micro rates
+		false_positive_rate["micro"], true_positive_rate["micro"], _ = roc_curve(binarized_outputs.ravel(), scores.ravel())
+		roc_auc["micro"] = auc(false_positive_rate["micro"], true_positive_rate["micro"])
+		all_false_positive_rate = numpy.unique(numpy.concatenate([false_positive_rate[i] for i in range(len(output_classes))]))
 
-		# Then interpolate all ROC curves at this points
-		mean_tpr = numpy.zeros_like(all_fpr)
+		#Interpolate all ROC curves of the different labels at this points
+		mean_true_positive_rate = numpy.zeros_like(all_false_positive_rate)
 		for i in range(len(output_classes)):
-			mean_tpr += interp(all_fpr, fpr[i], tpr[i])
+			mean_true_positive_rate += interp(all_false_positive_rate, false_positive_rate[i], true_positive_rate[i])
 
-		# Finally average it and compute AUC
-		mean_tpr /= len(output_classes)
+		#Average it and compute AUC (average is macro)
+		mean_true_positive_rate /= len(output_classes)
 
-		fpr["macro"] = all_fpr
-		tpr["macro"] = mean_tpr
-		roc_auc["macro"] = auc(fpr["macro"], tpr["macro"])
+		false_positive_rate["macro"] = all_false_positive_rate
+		true_positive_rate["macro"] = mean_true_positive_rate
+		roc_auc["macro"] = auc(false_positive_rate["macro"], true_positive_rate["macro"])
 		lw = 2
-		plt.figure()
-		plt.plot(fpr["micro"], tpr["micro"],
+		graph_plot.figure()
+		#Plot the graph for this fold
+		graph_plot.plot(false_positive_rate["micro"], true_positive_rate["micro"],
 			label='micro-average ROC curve (area = {0:0.2f})'
 			''.format(roc_auc["micro"]),
 			color='deeppink', linestyle=':', linewidth=4)
 
-		plt.plot(fpr["macro"], tpr["macro"],
+		graph_plot.plot(false_positive_rate["macro"], true_positive_rate["macro"],
 			label='macro-average ROC curve (area = {0:0.2f})'
 			''.format(roc_auc["macro"]),
 			color='navy', linestyle=':', linewidth=4)
 
 		colors = cycle(['aqua', 'darkorange', 'cornflowerblue', 'dimgray', 'lemonchiffon', 'mintcream', 'olive', 'slategray', 'tan', 'teal'])
 		for i, color in zip(range(len(output_classes)), colors):
-			plt.plot(fpr[i], tpr[i], color=color, lw=lw,
+			graph_plot.plot(false_positive_rate[i], true_positive_rate[i], color=color, lw=lw,
 				label='ROC curve of class {0} (area = {1:0.2f})'
 				''.format(i, roc_auc[i]))
 
-		plt.plot([0, 1], [0, 1], 'k--', lw=lw)
-		plt.xlim([0.0, 1.0])
-		plt.ylim([0.0, 1.05])
-		plt.xlabel('False Positive Rate')
-		plt.ylabel('True Positive Rate')
-		plt.legend(loc="lower right")
-		plt.savefig('../Graphs/SVM/Experiment_%d/roc_%d_fold.png' % (experiment_number, k))
-		plt.close('all')
+		graph_plot.plot([0, 1], [0, 1], 'k--', lw=lw)
+		graph_plot.xlim([0.0, 1.0])
+		graph_plot.ylim([0.0, 1.05])
+		graph_plot.xlabel('False Positive Rate')
+		graph_plot.ylabel('True Positive Rate')
+		graph_plot.legend(loc="lower right")
+		#Save the figure and close the plot
+		graph_plot.savefig('../Graphs/SVM/Experiment_%d/roc_%d_fold.png' % (experiment_number, k))
+		graph_plot.close('all')
+		#Calculate the performance metrics
 		accuracy = accuracy_score(fold_target_test, predictions)
 		mean_accuracy += accuracy
 		precision = precision_score(fold_target_test, predictions, average = 'macro')
