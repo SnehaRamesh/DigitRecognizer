@@ -99,9 +99,8 @@ for experiment in experiments:
 		plt.ylim([0.0, 1.05])
 		plt.xlabel('False Positive Rate')
 		plt.ylabel('True Positive Rate')
-		plt.title('Some extension of Receiver operating characteristic to multi-class')
 		plt.legend(loc="lower right")
-		plt.savefig('../Graphs/Random_Forest/Experiment_%d/roc_%d_fold.png' % (experiment_number, k))
+		plt.savefig('../Graphs/SVM/Experiment_%d/roc_%d_fold.png' % (experiment_number, k))
 		plt.close('all')
 		accuracy = accuracy_score(fold_target_test, predictions)
 		mean_accuracy += accuracy

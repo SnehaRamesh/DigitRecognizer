@@ -1,6 +1,5 @@
 from sklearn import svm
 from sys import argv
-from sklearn.neural_network import MLPClassifier
 from sklearn.ensemble import BaggingClassifier
 from sklearn.multiclass import OneVsRestClassifier
 import numpy
@@ -17,8 +16,8 @@ dataset = numpy.genfromtxt(open('../Data/train.csv','r'), delimiter=',', dtype='
 target = [x[0] for x in dataset]
 train = [x[1:] for x in dataset]
 test = numpy.genfromtxt(open('../Data/test.csv','r'), delimiter=',', dtype='f8')[1:]
-number_of_svms = 50
-svm_bagging_classifier = OneVsRestClassifier(BaggingClassifier(svm.SVC(C = 0.01, gamma = 1e-6), max_samples = 1.0 / number_of_svms, n_estimators = number_of_svms, n_jobs = cpu_count))
+number_of_svms = 40
+svm_bagging_classifier = OneVsRestClassifier(BaggingClassifier(svm.SVC(C = 0.01, gamma = 1e-8), max_samples = 1.0 / number_of_svms, n_estimators = number_of_svms, n_jobs = cpu_count))
 svm_bagging_classifier.fit(train, target)
 predictions = svm_bagging_classifier.predict(test)
 numpy.savetxt('../Predictions/svm_predictions.csv', numpy.c_[range(1,len(test)+1), predictions], delimiter=',', header = 'ImageId,Label', comments = '', fmt='%d')
